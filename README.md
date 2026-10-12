@@ -8,6 +8,8 @@
 - 连续 AAC 音轨按样本剪切，保留采样率与声道，并在剪辑接缝施加 15ms 微淡化。
 - 长片音频在独立进程编码；Windows 在真实探测通过后可使用 MF AAC。
 - 输出视频、JSON 剪辑计划和 Markdown 审计报告，保护源文件与已有成片。
+- 整个课程目录可用独立进程并行分析、导出，实时统计完成数、处理耗时和实际缩短时长；支持断点继续。
+- 长课自动分段上传识别音频并合并绝对时间戳；8-bit AV1 可使用缓存的 H.264/NVENC 兼容路径。
 
 完整使用规则见 [SKILL.md](SKILL.md)，编解码和同步边界见 [references/rendering.md](references/rendering.md)。
 
@@ -72,6 +74,17 @@ Windows 示例：
 
 macOS / Linux 使用 `bash scripts/run.sh` 代替 PowerShell 入口。
 
+批量处理：
+
+```powershell
+.\scripts\run.ps1 batch analyze 'D:\courses' -o 'D:\courses_edited' --analysis-workers 4
+# Agent 阅读每份 semantic_context.json 并写 semantic_plan.json 后：
+.\scripts\run.ps1 batch render 'D:\courses' -o 'D:\courses_edited' --render-workers 2
+.\scripts\run.ps1 batch status 'D:\courses' -o 'D:\courses_edited'
+```
+
+`batch run` / `batch resume` 可同时分析待办和导出已有计划的课程。终端与 `batch_progress.json` / `batch_progress.md` 每 10 秒更新。无语义计划时返回待办；不会把未审查的转录当作语义判断已完成。配置、缓存恢复及统计口径见 [批处理说明](references/batch-processing.md)。
+
 | 参数 | 用途 |
 | --- | --- |
 | `--video-encoder cpu` | 明确选择 CPU 编码 |
@@ -82,6 +95,9 @@ macOS / Linux 使用 `bash scripts/run.sh` 代替 PowerShell 入口。
 | `--renderer encode` | 手动选择完整重编码兼容模式 |
 | `--fast-copy` | 关键帧附近近似预览，可能残留被删内容 |
 | `--overwrite` | 允许替换已有成片，仍不能覆盖源片 |
+| `--av1-compatibility auto\|h264\|off` | AV1 兼容转换策略；auto 在 NVENC 可用且源片为 8-bit YUV420 时转换 |
+
+AV1 兼容路径先完整转换 H.264，再由 smartcut 剪辑，属于有损处理，可能增大文件体积。中间文件按源片和参数缓存，报告分别记录转换耗时和包含转换的导出墙钟；高位深 AV1 不进入此 8-bit 路径。
 
 ## 性能与验收
 

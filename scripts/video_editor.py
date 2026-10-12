@@ -42,6 +42,7 @@ from silence_detector import (
 )
 from transcriber import load_api_key, transcribe_audio_bailian, validate_transcript
 from volcengine_asr import transcribe_audio_volcengine
+from asr_chunks import transcribe_long_audio
 from video_assembler import (
     assemble_video_smartcut,
     assemble_video_encode,
@@ -65,6 +66,9 @@ DEFAULT_CONFIG = {
     "audio_coder": "fast",
     "audio_encoder": "auto",
     "audio_pipeline": "auto",
+    "av1_compatibility": "auto",
+    "asr_chunk_seconds": 2400,
+    "asr_chunk_workers": 2,
 }
 
 
@@ -132,7 +136,8 @@ def validate_plan(plan: dict[str, Any], video_path: Path) -> dict[str, Any]:
     for key, choices, default in (('video_decoder', ('auto', 'cpu', 'nvdec'), 'auto'),
                                   ('audio_coder', ('fast', 'twoloop'), 'fast'),
                                   ('audio_encoder', ('auto', 'aac', 'mf'), 'auto'),
-                                  ('audio_pipeline', ('auto', 'thread', 'process'), 'auto')):
+                                  ('audio_pipeline', ('auto', 'thread', 'process'), 'auto'),
+                                  ('av1_compatibility', ('auto', 'h264', 'off'), 'auto')):
         value = plan['config'].get(key, default)
         if value not in choices:
             raise ValueError(f'{key} 配置无效')
@@ -151,10 +156,76 @@ def review_plan(video_path: Path, work_dir: Path | None = None) -> dict[str, Any
     return validate_plan(load_json(plan_path), video_path)
 
 
+def compile_semantic_plan(video_path, source, duration_s, report_config, pause_cuts,
+                          segments, audio_wav, semantic_plan_data):
+    words = flatten_words(segments)
+    if not isinstance(semantic_plan_data, dict) or semantic_plan_data.get("source") != source:
+        raise ValueError("semantic_plan.json 的 source 与当前视频不一致，请基于最新 semantic_context.json 重写")
+    semantic_cuts = plan_video_cuts(
+        segments, semantic_plan_data, model="agent",
+        max_local_cleanup_ms=report_config["semantic_max_local_cleanup_ms"],
+    )
+    semantic_cuts = refine_cut_boundaries_to_minima(semantic_cuts, audio_wav)
+    cuts = merge_intervals([(c["start_ms"], c["end_ms"]) for c in pause_cuts + semantic_cuts])
+    cuts = validate_intervals(cuts, duration_s * 1000)
+    # Final guard after semantic boundary operations. Confirmed audio silence is
+    # allowed to overlap an imprecise ASR timestamp; only semantic cuts must
+    # prove that every removed word belongs to the Agent-approved range.
+    for word in words:
+        ws, we = word["start"] * 1000, word["end"] * 1000
+        removed = any(c["spoken_start_ms"] - 1 <= ws and we <= c["spoken_end_ms"] + 1
+                      for c in semantic_cuts)
+        if not removed and any(max(ws, s) < min(we, e)
+                               for s, e in ((c["start_ms"], c["end_ms"])
+                                            for c in semantic_cuts)):
+            raise ValueError("最终剪辑区间触及保留文字，已停止出片")
+    for c in semantic_cuts:
+        if any(max(rs, c["start_ms"]) < min(re, c["end_ms"])
+               for rs, re in c["replacement_intervals"]):
+            raise ValueError("最终剪辑区间触及替代话术，已停止出片")
+    kept = complement_intervals(cuts, duration_s * 1000)
+    if not kept:
+        raise ValueError("剪辑计划未保留内容，已停止出片")
+    plan = {
+        "schema_version": 1, "source": source, "config": report_config,
+        "input_video": str(video_path), "original_duration_s": duration_s,
+        "new_duration_s": interval_duration(kept) / 1000,
+        "pause_cuts": pause_cuts, "semantic_cuts": semantic_cuts,
+        "merged_cut_intervals": cuts, "kept_intervals": kept,
+    }
+    return plan
+
+
+def compile_cached_plan(video_path: Path, work_dir: Path | None = None,
+                        semantic_plan: Path | None = None) -> dict[str, Any]:
+    """Compile the Agent plan offline, reusing the completed acoustic analysis."""
+    video_path = video_path.resolve()
+    directory, plan_path, report = work_paths(video_path, work_dir)
+    context = load_json(directory / 'semantic_context.json')
+    source = source_signature(video_path)
+    if context.get('source') != source:
+        raise ValueError('语义上下文与源视频不匹配，请重新分析')
+    segments = validate_transcript(load_json(directory / 'transcript.json'))
+    duration_s = float(context['original_duration_s'])
+    if any(w['end'] > duration_s + .1 for w in flatten_words(segments)):
+        raise ValueError('转录时间戳超出源视频')
+    config = {**DEFAULT_CONFIG, **context['config']}
+    plan = compile_semantic_plan(video_path, source, duration_s, config, context['pause_cuts'],
+                                segments, directory / 'audio_16k.wav',
+                                load_json(semantic_plan or directory / 'semantic_plan.json'))
+    plan = validate_plan(plan, video_path)
+    write_json(plan_path, plan)
+    return plan
+
+
 def export_plan(plan: dict[str, Any], video_path: Path, output_video: Path,
                 report_path: Path, *, fast_copy=False, overwrite=False, renderer=None, video_encoder=None,
-                video_decoder=None, audio_coder=None, audio_encoder=None, audio_pipeline=None) -> float:
+                video_decoder=None, audio_coder=None, audio_encoder=None, audio_pipeline=None,
+                av1_compatibility=None) -> float:
     stats = {}
+    started = time.perf_counter()
+    validate_output_path(video_path, output_video, overwrite=overwrite)
+    render_source = video_path
     kwargs = {"overwrite": overwrite, "stats": stats}
     renderer = renderer or plan["config"].get("renderer", "smartcut")
     video_encoder = video_encoder or plan['config'].get('video_encoder', 'auto')
@@ -165,6 +236,14 @@ def export_plan(plan: dict[str, Any], video_path: Path, output_video: Path,
     else:
         assemble = assemble_video_smartcut if renderer == "smartcut" else assemble_video_encode
         if renderer == 'smartcut':
+            if probe_video_info(video_path).get('video_codec') == 'av1':
+                from av1_compatibility import prepare_compatible_source
+                render_source, compatibility = prepare_compatible_source(
+                    video_path, report_path.parent, plan['source'],
+                    mode=av1_compatibility or plan['config'].get('av1_compatibility', 'auto'),
+                    video_encoder=video_encoder)
+                if compatibility:
+                    stats['av1_compatibility'] = compatibility
             kwargs['video_encoder'] = video_encoder
             kwargs['video_decoder'] = video_decoder or plan['config'].get('video_decoder', 'auto')
             kwargs['audio_coder'] = audio_coder or plan['config'].get('audio_coder', 'fast')
@@ -172,8 +251,9 @@ def export_plan(plan: dict[str, Any], video_path: Path, output_video: Path,
             kwargs['audio_pipeline'] = audio_pipeline or plan['config'].get('audio_pipeline', 'auto')
         elif video_encoder == 'nvenc':
             raise ValueError('NVENC 仅适用于 smartcut 渲染器')
-        assemble(video_path, plan["kept_intervals"], output_video,
+        assemble(render_source, plan["kept_intervals"], output_video,
                  crossfade_ms=plan["config"]["crossfade_ms"], **kwargs)
+    stats['total_export_elapsed_s'] = time.perf_counter() - started
     actual = float(probe_video_info(output_video)["duration_s"])
     generate_markdown_report(
         video_path, output_video, plan["original_duration_s"], plan["new_duration_s"],
@@ -203,11 +283,16 @@ def run_pipeline(
     audio_coder: str | None = None,
     audio_encoder: str | None = None,
     audio_pipeline: str | None = None,
+    av1_compatibility: str | None = None,
+    prepare_only: bool = False,
+    asr_chunk_workers: int | None = None,
 ) -> dict[str, Any]:
     video_path = video_path.resolve()
     if not video_path.is_file():
         raise FileNotFoundError(f"找不到源视频：{video_path}")
     cfg = get_config()
+    if asr_chunk_workers is not None:
+        cfg['asr_chunk_workers'] = asr_chunk_workers
     if renderer is not None:
         cfg["renderer"] = renderer
     if video_encoder is not None:
@@ -220,6 +305,10 @@ def run_pipeline(
         cfg['audio_encoder'] = audio_encoder
     if audio_pipeline is not None:
         cfg['audio_pipeline'] = audio_pipeline
+    if av1_compatibility is not None:
+        cfg['av1_compatibility'] = av1_compatibility
+    if cfg['av1_compatibility'] not in ('auto', 'h264', 'off'):
+        raise ValueError('av1-compatibility 必须为 auto、h264 或 off')
     if cfg['audio_pipeline'] not in ('auto', 'thread', 'process'):
         raise ValueError('audio-pipeline 必须为 auto、thread 或 process')
     if cfg['audio_encoder'] not in ('auto', 'aac', 'mf'):
@@ -269,7 +358,9 @@ def run_pipeline(
     silence_db = resolve_silence_db(str(silence_db_override) if silence_db_override is not None else "auto", mean_db, noise_floor, speech_level)
     report_config["silence_db"] = silence_db
     transcribe = transcribe_audio_volcengine if cfg["asr_backend"] == "volcengine" else transcribe_audio_bailian
-    segments = validate_transcript(transcribe(audio_wav, directory / "transcript.json"))
+    segments = transcribe_long_audio(audio_wav, directory / "transcript.json", transcribe,
+                                    backend=cfg['asr_backend'], chunk_seconds=cfg['asr_chunk_seconds'],
+                                    workers=cfg['asr_chunk_workers'])
     words = flatten_words(segments)
     if any(w["end"] > duration_s + 0.1 for w in words):
         raise ValueError("转录时间戳超出源视频，请检查转录结果")
@@ -286,7 +377,7 @@ def run_pipeline(
     semantic_context_path = directory / "semantic_context.json"
     default_semantic_plan = directory / "semantic_plan.json"
     semantic_plan_path = (semantic_plan or default_semantic_plan).resolve()
-    if not semantic_plan_path.exists():
+    if prepare_only or not semantic_plan_path.exists():
         context = {
             "source": source,
             "input_video": str(video_path),
@@ -306,41 +397,9 @@ def run_pipeline(
             "needs_agent_plan": True,
             "dry_run": True,
         }
-    semantic_plan_data = load_json(semantic_plan_path)
-    if not isinstance(semantic_plan_data, dict) or semantic_plan_data.get("source") != source:
-        raise ValueError("semantic_plan.json 的 source 与当前视频不一致，请基于最新 semantic_context.json 重写")
-    semantic_cuts = plan_video_cuts(
-        segments, semantic_plan_data, model="agent",
-        max_local_cleanup_ms=cfg["semantic_max_local_cleanup_ms"],
-    )
-    semantic_cuts = refine_cut_boundaries_to_minima(semantic_cuts, audio_wav)
-    cuts = merge_intervals([(c["start_ms"], c["end_ms"]) for c in pause_cuts + semantic_cuts])
-    cuts = validate_intervals(cuts, duration_s * 1000)
-    # Final guard after semantic boundary operations. Confirmed audio silence is
-    # allowed to overlap an imprecise ASR timestamp; only semantic cuts must
-    # prove that every removed word belongs to the Agent-approved range.
-    for word in words:
-        ws, we = word["start"] * 1000, word["end"] * 1000
-        removed = any(c["spoken_start_ms"] - 1 <= ws and we <= c["spoken_end_ms"] + 1
-                      for c in semantic_cuts)
-        if not removed and any(max(ws, s) < min(we, e)
-                               for s, e in ((c["start_ms"], c["end_ms"])
-                                            for c in semantic_cuts)):
-            raise ValueError("最终剪辑区间触及保留文字，已停止出片")
-    for c in semantic_cuts:
-        if any(max(rs, c["start_ms"]) < min(re, c["end_ms"])
-               for rs, re in c["replacement_intervals"]):
-            raise ValueError("最终剪辑区间触及替代话术，已停止出片")
-    kept = complement_intervals(cuts, duration_s * 1000)
-    if not kept:
-        raise ValueError("剪辑计划未保留内容，已停止出片")
-    plan = {
-        "schema_version": 1, "source": source, "config": report_config,
-        "input_video": str(video_path), "original_duration_s": duration_s,
-        "new_duration_s": interval_duration(kept) / 1000,
-        "pause_cuts": pause_cuts, "semantic_cuts": semantic_cuts,
-        "merged_cut_intervals": cuts, "kept_intervals": kept,
-    }
+    plan = compile_semantic_plan(video_path, source, duration_s, report_config, pause_cuts,
+                                 segments, audio_wav, load_json(semantic_plan_path))
+    semantic_cuts, cuts, kept = plan['semantic_cuts'], plan['merged_cut_intervals'], plan['kept_intervals']
     write_json(plan_path, plan)
     generate_markdown_report(
         video_path, output_video, duration_s, plan["new_duration_s"], pause_cuts, semantic_cuts,
@@ -360,12 +419,18 @@ def run_pipeline(
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == 'batch':
+        from batch_editor import main as batch_main
+        return batch_main(sys.argv[2:])
     parser = argparse.ArgumentParser(description="video-editor：口播粗剪、离线复核与导出")
     commands = parser.add_subparsers(dest="command", required=True)
     cut = commands.add_parser("cut", help="准备语义上下文，或按 Agent 计划分析并剪辑")
     review = commands.add_parser("review", help="离线读取已有计划，不重新分析")
     render = commands.add_parser("render", help="离线按已有计划导出")
-    for command in (cut, review, render):
+    compile_command = commands.add_parser('compile', help='离线从已缓存的上下文编译 Agent 计划')
+    batch = commands.add_parser('batch', help='多课程并行分析、导出、恢复及进度', add_help=False)
+    batch.add_argument('batch_args', nargs=argparse.REMAINDER)
+    for command in (cut, review, render, compile_command):
         command.add_argument("video", type=Path)
         command.add_argument("--work-dir", type=Path)
     for command in (cut, render):
@@ -384,13 +449,23 @@ def main():
                              help='auto 在 Windows 探测 MF AAC；aac 为原生 AAC；mf 严格要求 Media Foundation')
         command.add_argument('--audio-pipeline', choices=('auto', 'thread', 'process'),
                              help='auto 为长片采用独立音频进程；thread 为原线程管线；process 强制独立进程')
+        command.add_argument('--av1-compatibility', choices=('auto', 'h264', 'off'),
+                             help='auto 对可用 NVENC 的 8-bit AV1 先转换 H.264；h264 显式转换；off 保留原编码')
     cut.add_argument("--dry-run", action="store_true")
     cut.add_argument("--semantic-plan", type=Path, help="Agent 写出的 semantic_plan.json")
     cut.add_argument("--pause-threshold", type=float)
     cut.add_argument("--silence-db", type=float, help="本次视频的静音门限 dBFS；省略时自动估计")
+    cut.add_argument('--prepare-only', action='store_true', help='只准备上下文，即使已有 Agent 计划也不导出')
+    cut.add_argument('--asr-chunk-workers', type=int, help='长课 ASR 分段并发数，1 到 4')
+    compile_command.add_argument('--semantic-plan', type=Path)
     args = parser.parse_args()
     try:
-        if args.command == "cut":
+        if args.command == 'batch':
+            from batch_editor import main as batch_main
+            return batch_main(args.batch_args)
+        if args.command == 'compile':
+            result = compile_cached_plan(args.video, args.work_dir, args.semantic_plan)
+        elif args.command == "cut":
             result = run_pipeline(
                 args.video, args.output, dry_run=args.dry_run, fast_copy=args.fast_copy,
                 pause_threshold_ms=args.pause_threshold, semantic_plan=args.semantic_plan,
@@ -401,6 +476,8 @@ def main():
                 video_decoder=args.video_decoder, audio_coder=args.audio_coder,
                 audio_encoder=args.audio_encoder,
                 audio_pipeline=args.audio_pipeline,
+                av1_compatibility=args.av1_compatibility, prepare_only=args.prepare_only,
+                asr_chunk_workers=args.asr_chunk_workers,
             )
         else:
             result = review_plan(args.video, args.work_dir)
@@ -421,6 +498,7 @@ def main():
                     video_decoder=args.video_decoder, audio_coder=args.audio_coder,
                     audio_encoder=args.audio_encoder,
                     audio_pipeline=args.audio_pipeline,
+                    av1_compatibility=args.av1_compatibility,
                 )
                 result["output_video"] = str(output)
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -429,4 +507,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

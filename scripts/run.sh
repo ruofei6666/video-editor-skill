@@ -8,7 +8,10 @@ if [[ ! -x "$PYTHON_BIN" ]]; then
     exit 1
 fi
 
-if [[ "${1:-}" == "cut" && " $* " != *" --help "* && " $* " != *" -h "* ]]; then
+NEEDS_ASR=false
+if [[ "${1:-}" == "cut" ]]; then NEEDS_ASR=true; fi
+if [[ "${1:-}" == "batch" && "${2:-}" =~ ^(analyze|run|resume)$ ]]; then NEEDS_ASR=true; fi
+if [[ "$NEEDS_ASR" == true && " $* " != *" --help "* && " $* " != *" -h "* ]]; then
     BACKEND="$("$PYTHON_BIN" -c 'import sys; sys.path.insert(0, sys.argv[1]); from video_editor import get_config; print(str(get_config().get("asr_backend", "bailian")).strip().lower())' "$SKILL_DIR/scripts")"
     case "$BACKEND" in
         bailian) PROFILE=default ;;

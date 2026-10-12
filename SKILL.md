@@ -1,6 +1,6 @@
 ---
 name: video-editor
-description: "使用 smartcut 智能渲染快速粗剪课程与口播 MP4、MOV、MKV 视频：压缩停顿，删掉口误重讲、废话、无意义语气词和重复的话，导出新视频、剪辑计划和审计报告。用户要求自动粗剪、压缩口播节奏或导出剪辑时间线时使用。不处理原生剪辑工程，不生成字幕。"
+description: "使用 smartcut 粗剪单片或整个课程目录：压缩停顿、删掉口误重讲、废话和重复，支持多进程、长课分段转录、AV1 兼容导出、实时进度及断点继续。输出新视频、剪辑计划和报告。用户要求课程或口播 MP4/MOV/MKV 自动粗剪、压缩节奏或批量处理时使用。不处理原生剪辑工程，不生成字幕。"
 ---
 
 # Video Editor
@@ -55,12 +55,15 @@ description: "使用 smartcut 智能渲染快速粗剪课程与口播 MP4、MOV�
   "video_decoder": "auto",
   "audio_coder": "fast",
   "audio_encoder": "auto",
-  "audio_pipeline": "auto"
+  "audio_pipeline": "auto",
+  "av1_compatibility": "auto",
+  "asr_chunk_seconds": 2400,
+  "asr_chunk_workers": 2
 }
 ```
 
 - `semantic_planner` 固定为 `calling-agent`，表示语义判断由当前调用 Skill 的 Agent 完成，不读取模型地址、不保存模型 Key。
-- `asr_backend` 可选 `volcengine` 或 `bailian`。火山采用标准版 submit/query，上传本地音频的 base64，不上传视频画面；关闭 `enable_ddc` 和 `enable_itn`，保留口误、重复和原始说法。只接受真实逐字时间戳，缺失即停止。当前本地直传入口限制音频 100 MB，较长视频需先分段。任务提交成功后记录无密钥的任务编号，查询超时后可继续同一任务。
+- `asr_backend` 可选 `volcengine` 或 `bailian`。火山采用标准版 submit/query，上传本地音频的 base64，不上传视频画面；关闭 `enable_ddc` 和 `enable_itn`，保留口误、重复和原始说法。只接受真实逐字时间戳，缺失即停止。超过 100 MB 的 WAV 自动按约 40 分钟分段识别并恢复源坐标时间戳；视频保持完整。任务提交成功后记录无密钥的任务编号，查询超时后可继续同一任务。分段和安全恢复细节见 [批处理说明](references/batch-processing.md)。
 - 较大 WAV 会生成 48 kbps MP3 用于 ASR 上传；本地停顿分析仍用原始 WAV。低音量讲解应核对音量门限及字时间戳，可用 `cut --silence-db -45` 为当前视频降低静音门限，实际门限会写入报告。不要把明显有声音的低音量话语当成空白。
 - `semantic_max_local_cleanup_ms` 是局部口误的安全上限，超过 2.5 秒的 `delivery_cleanup` 或 `self_correction` 默认拒绝。
 - `scripts/run.sh` 和 `scripts/run.ps1` 按当前平台和 `asr_backend` 选择凭据入口。火山使用 `volcengine` 凭据配置，百炼使用 `default`；普通配置 JSON 不保存 Key。
@@ -175,13 +178,29 @@ bash scripts/run.sh render /path/to/video.mp4 -o /path/to/video_edited.mp4
 
 更换源视频后必须重新分析。已有成片默认不覆盖，明确需要替换时加 `--overwrite`；该选项也不能覆盖源片。分析失败可直接重试，相同源文件的有效音频和转录会复用，原有成功计划不会被失败结果替换。
 
+### 5. 整个课程目录、多进程与进度
+
+批量任务先读 [references/batch-processing.md](references/batch-processing.md)，使用统一调度入口，不再临时复制脚本或通过改名计划来避开冲突。
+
+```powershell
+.\scripts\run.ps1 batch analyze 'D:\courses' -o 'D:\courses_edited' --analysis-workers 4
+# Agent 逐份阅读 .work/<文件名>/semantic_context.json，写同目录 semantic_plan.json
+.\scripts\run.ps1 batch render 'D:\courses' -o 'D:\courses_edited' --render-workers 2
+```
+
+`batch run` 可同时分析缺少上下文的课程、导出已有计划的课程；`batch resume` 复用完成的任务与缓存。无 Agent 计划时返回待办，不自行当作无删减。`compile` 从已有上下文离线编译单片计划，批量导出使用相同入口，避免重复 VAD/ASR。
+
+终端每 10 秒更新，输出目录持续写入 `batch_progress.json` 和 `batch_progress.md`。用户要求实时汇报时，Agent 至少每 60 秒读取实际状态并汇报完成数、各阶段数量、处理墙钟和已完成课程的实际缩短时长。预测时长不能计入已完成统计，并行阶段不能相加。`batch status` 读取当前快照，不读取 Key。
+
+AV1 默认在可用 NVENC 和 8-bit YUV420 条件下先转换成 H.264 再由 smartcut 剪辑。转换使用 PyAV 的运行时、32 秒 GOP、P4/HQ/CQ18 和原音轨复制；有损且可能增大体积。报告单列兼容转换及总导出耗时。`--av1-compatibility off` 保留原编码；`h264` 显式转换。默认 auto 配显式 CPU 时保留原 AV1，严格 GPU 请求不静默回退。详情和高位深限制见批处理说明。
+
 ---
 
 ## 输出规范
 
 1. **剪辑后视频**：
    - 命名：默认在源文件同目录下生成 `<name>_edited.<ext>`，或由 `-o` 指定。
-   - 编码：默认保留视频编码与分辨率，只重编码切点附近；音频连续编码为 192k AAC。重编码部分有损，视频切点向外量化到帧边界，报告记录采用的区间；不足一帧的删除可能不执行。临时导出经轨道与采用时长检查后才写入目标文件。
+   - 编码：H.264/HEVC 默认保留视频编码与分辨率，只重编码切点附近；AV1 兼容路径输出 H.264。音频连续编码为 192k AAC。重编码部分有损，视频切点向外量化到帧边界，报告记录采用的区间；不足一帧的删除可能不执行。临时导出经轨道与采用时长检查后才写入目标文件。
 2. **审计报告**：
    - 保存在源文件旁的 `.<name>.<ext>_work/<name>_edit_report.md`。
    - 提供 Markdown 表格，清晰记录各处删减的前后文与删减理由。
@@ -193,6 +212,10 @@ bash scripts/run.sh render /path/to/video.mp4 -o /path/to/video_edited.mp4
 - `references/api-key-setup.md`: API Key 安全配置、环境绑定与凭据读取规范。
 - `scripts/run.sh` / `scripts/run.ps1`: 按平台选择虚拟环境与凭据入口。
 - `scripts/video_editor.py`: 分析、离线复核与按计划渲染。
+- `scripts/batch_editor.py`: 多课程进程池、任务恢复、日志及实时缩短统计。
+- `scripts/asr_chunks.py`: 长课上传音频分段、缓存及绝对时间戳合并。
+- `scripts/av1_compatibility.py`: 保持时间轴的 AV1 → H.264 中间文件与转换缓存。
+- `references/batch-processing.md`: 并发参数、长课、AV1、任务恢复及进度口径。
 - `scripts/audio_extractor.py`: 音频提取与声学能量分析。
 - `scripts/transcriber.py`: 凭据读取、时间戳校验和百炼 ASR。
 - `scripts/volcengine_asr.py`: 火山录音文件识别 2.0 标准版、任务续查及逐字时间戳转换。

@@ -17,7 +17,7 @@ def probe_video_info(video_path: Path) -> dict[str, float | str]:
     cmd = [
         "ffprobe",
         "-v", "error",
-        "-show_entries", "format=duration:stream=codec_type,width,height,r_frame_rate",
+        "-show_entries", "format=duration:stream=codec_type,codec_name,width,height,r_frame_rate",
         "-of", "json",
         str(video_path),
     ]
@@ -32,11 +32,13 @@ def probe_video_info(video_path: Path) -> dict[str, float | str]:
     width = 1920
     height = 1080
     fps = 30.0
+    video_codec = ''
     for s in data.get("streams") or []:
         if s.get("codec_type") == "audio":
             has_audio = True
         elif s.get("codec_type") == "video":
             has_video = True
+            video_codec = s.get('codec_name', '')
             if s.get("width"):
                 width = int(s["width"])
             if s.get("height"):
@@ -54,6 +56,7 @@ def probe_video_info(video_path: Path) -> dict[str, float | str]:
         "width": width,
         "height": height,
         "fps": fps,
+        "video_codec": video_codec,
     }
 
 

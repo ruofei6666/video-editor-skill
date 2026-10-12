@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $CliArgs = @($args)
 $Command = if ($args.Count -gt 0) { [string]$args[0] } else { "" }
 if ([string]::IsNullOrWhiteSpace($Command)) {
-    throw "用法：.\scripts\run.ps1 cut|review|render <视频> [参数]"
+    throw "用法：.\scripts\run.ps1 cut|compile|review|render <视频> [参数]，或 batch <阶段> <目录>"
 }
 
 $ScriptsDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -17,7 +17,9 @@ if (-not (Test-Path -LiteralPath $PythonBin)) {
 }
 
 $HasHelp = ($CliArgs -contains "--help") -or ($CliArgs -contains "-h")
-if ($Command -eq "cut" -and -not $HasHelp) {
+$BatchStage = if ($CliArgs.Count -gt 1) { [string]$CliArgs[1] } else { "" }
+$NeedsAsr = ($Command -eq "cut") -or ($Command -eq "batch" -and $BatchStage -in @("analyze", "run", "resume"))
+if ($NeedsAsr -and -not $HasHelp) {
     $Backend = & $PythonBin -c "import sys; sys.path.insert(0, sys.argv[1]); from video_editor import get_config; print(str(get_config().get('asr_backend', 'bailian')).strip().lower())" $ScriptsDir
     if ($LASTEXITCODE -ne 0) { throw "Cannot read ASR configuration." }
     if ($Backend -notin @("bailian", "volcengine")) { throw "Unsupported ASR backend." }

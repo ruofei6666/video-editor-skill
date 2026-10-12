@@ -20,6 +20,13 @@ QUERY_ENDPOINT = "https://openspeech.bytedance.com/api/v3/auc/bigmodel/query"
 RESOURCE = "volc.seedasr.auc"
 
 
+class ProviderError(RuntimeError):
+    def __init__(self, message, http_status, code):
+        super().__init__(message)
+        self.http_status = http_status
+        self.code = str(code)
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         # Never forward the API key to a redirected destination.
@@ -53,10 +60,12 @@ def convert_response(raw: dict) -> list[dict]:
 def _failure(http_status, code) -> RuntimeError:
     # Do not echo provider response bodies, request headers, or credential values.
     if str(code) == "45000030":
-        return RuntimeError(f"火山语音未授予资源权限：请开通并授权录音文件识别 2.0 标准版 {RESOURCE}（45000030）。")
-    if http_status in (401, 403):
-        return RuntimeError("火山语音鉴权失败，请检查语音控制台 API Key 和资源权限。")
-    return RuntimeError(f"火山语音请求失败（HTTP {http_status}，状态码 {code}），未生成成功转录。")
+        message = f"火山语音未授予资源权限：请开通并授权录音文件识别 2.0 标准版 {RESOURCE}（45000030）。"
+    elif http_status in (401, 403):
+        message = "火山语音鉴权失败，请检查语音控制台 API Key 和资源权限。"
+    else:
+        message = f"火山语音请求失败（HTTP {http_status}，状态码 {code}），未生成成功转录。"
+    return ProviderError(message, http_status, code)
 
 
 def _post(endpoint: str, payload: dict, headers: dict) -> tuple[str, dict, str]:
@@ -73,11 +82,11 @@ def _post(endpoint: str, payload: dict, headers: dict) -> tuple[str, dict, str]:
         raise RuntimeError("火山语音网络连接失败或超时；未自动重交任务，请检查后重新运行。") from None
 
 
-def transcribe_audio_volcengine(audio_path: Path, output_json: Path) -> list[dict]:
+def transcribe_audio_volcengine(audio_path: Path, output_json: Path, *, _recovered=False) -> list[dict]:
     if output_json.exists():
         return validate_transcript(load_json(output_json))
     if audio_path.stat().st_size > 100_000_000:
-        raise ValueError("当前火山本地直传入口上限 100 MB，请先拆分较长视频后分别剪辑。")
+        raise ValueError("当前火山本地直传入口上限 100 MB，请使用 video-editor 的自动长课分段入口。")
     with wave.open(str(audio_path), "rb") as audio:
         if audio.getnchannels() != 1 or audio.getframerate() != 16000 or audio.getsampwidth() != 2:
             raise ValueError("火山 ASR 入口要求 16 kHz 单声道 16-bit WAV。")
@@ -93,6 +102,8 @@ def transcribe_audio_volcengine(audio_path: Path, output_json: Path) -> list[dic
     matching_job = isinstance(job, dict) and job.get("audio_sha256") == audio_hash and job.get("resource") == RESOURCE
     if not matching_job:
         job = {"request_id": str(uuid.uuid4()), "audio_sha256": audio_hash, "resource": RESOURCE}
+        if _recovered:
+            job['missing_task_recovery_used'] = True
     headers = {
         "Content-Type": "application/json", "X-Api-Key": load_api_key("volcengine"),
         "X-Api-Resource-Id": RESOURCE, "X-Api-Request-Id": job["request_id"], "X-Api-Sequence": "-1"}
@@ -120,12 +131,25 @@ def transcribe_audio_volcengine(audio_path: Path, output_json: Path) -> list[dic
         if code != "20000000":
             raise _failure(200, code)
         job["log_id"] = log_id
+        job['submitted'] = True
         write_json(job_path, job)  # No key; resume this task after a poll timeout.
     if job.get("log_id"):
         headers["X-Tt-Logid"] = job["log_id"]
     for attempt in range(120):
         time.sleep(5)
-        code, raw, _ = _post(QUERY_ENDPOINT, {}, headers)
+        try:
+            code, raw, _ = _post(QUERY_ENDPOINT, {}, headers)
+        except ProviderError as exc:
+            # A timeout is uncertain. Only the provider's explicit task-not-found
+            # response permits one new submission of an unacknowledged task.
+            if (exc.code == '45000092' and exc.http_status == 200 and not job.get('submitted') and 'log_id' not in job
+                    and not job.get('missing_task_recovery_used') and not _recovered):
+                archive = job_path.with_name(f"{job_path.stem}.{job['request_id']}.not-submitted.json")
+                write_json(archive, job)
+                job_path.unlink()
+                log('服务商确认未接收此任务；已归档旧编号，仅重新提交一次。')
+                return transcribe_audio_volcengine(audio_path, output_json, _recovered=True)
+            raise
         if code == "20000000":
             segments = convert_response(raw)
             write_json(output_json, segments)

@@ -356,6 +356,10 @@ def generate_markdown_report(
     if fast_copy:
         lines.insert(7, "- **近似流拷贝**：切点受关键帧限制，可能保留额外内容；未应用音频淡化。")
     if actual_duration_s is not None and export_details:
+        compatibility = export_details.get('av1_compatibility', {})
+        if compatibility.get('selected'):
+            lines[7:7] = [f"- **AV1 兼容转换**：H.264；额外耗时 {compatibility['current_transcode_s']:.3f}s；复用缓存：{compatibility['cache_reused']}。重编码有损。",
+                          f"- **含兼容转换的导出墙钟**：{export_details['total_export_elapsed_s']:.3f}s。"]
         lines[7:7] = [
             f"- **实际渲染器**：{export_details.get('renderer', 'unknown')}",
             f"- **导出耗时**：{export_details.get('export_elapsed_s', 0):.3f}s（不含 ASR 与语义分析）",
