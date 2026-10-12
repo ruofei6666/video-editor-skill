@@ -1,0 +1,603 @@
+{
+  "date": "2026-10-12",
+  "input": {
+    "description": "Speech course; synthetic regular keep intervals, not semantic edits",
+    "codec": "H.264",
+    "width": 1280,
+    "height": 720,
+    "fps": 20,
+    "source_duration_s": 1611.650181
+  },
+  "hardware": {
+    "os": "Windows",
+    "cpu": "Intel Core i7-13700H",
+    "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU, 4 GB"
+  },
+  "adopted_duration_s": 1311.950281,
+  "all_runs_adopted_timeline_and_counts_equal": true,
+  "adopted_interval_count": 1000,
+  "written_video_frames": 26234,
+  "audio_samples_written": [
+    57857007
+  ],
+  "audio_padded_samples": [
+    0
+  ],
+  "planned_recode_video_frames": 26217,
+  "timeline_sha256": "3aa6e1b6d859f8c670a23178e0fd56a87a49a40269702796637f850761b4a35a",
+  "accepted_change": "NVENC surfaces=32; all preset, quality, GOP, B-frame, resolution, FPS and audio settings retained.",
+  "previous_code_wall_s": [
+    64.68755790000068,
+    47.29129190000094
+  ],
+  "final_equivalent_wall_s": [
+    39.03731730000072,
+    39.63338769999973
+  ],
+  "observed_paired_wall_reduction_percent": [
+    39.65251036320184,
+    16.193053503791166
+  ],
+  "performance_limitations": [
+    "Few sequential measurements, not a randomized statistical benchmark; clocks, temperature and machine state were not locked.",
+    "Previous-code timings varied from 64.688 to 47.291 seconds; final equivalent timings were 39.037 and 39.633 seconds.",
+    "Audio stage also varied despite unchanged audio code/settings, so not all wall reduction is attributable to video buffering.",
+    "This is a synthetic cut-density benchmark, not completed semantic course editing.",
+    "The one-hour-in-ten-seconds target is not achieved."
+  ],
+  "checks": {
+    "regression_tests_passed": 76,
+    "regression_elapsed_s": 59.267,
+    "full_course_validation": [
+      {
+        "full_decode_passed": true,
+        "adopted_timeline_and_counts_unchanged": true,
+        "video_packets_identical_to_previous": true,
+        "audio_packets_identical_to_previous": true,
+        "real_course_checks": [
+          {
+            "interval": 0,
+            "rgb_mae": 0.05112811177968979,
+            "audio_lag_samples": null,
+            "audio_correlation": null,
+            "source_audio_rms": 1.0352598110330291e-05,
+            "quiet_window": true
+          },
+          {
+            "interval": 1,
+            "rgb_mae": 0.04063042625784874,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9991169796974606,
+            "source_audio_rms": 0.0024404837749898434,
+            "quiet_window": false
+          },
+          {
+            "interval": 99,
+            "rgb_mae": 0.6087604761123657,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9996729704010359,
+            "source_audio_rms": 0.01422752533107996,
+            "quiet_window": false
+          },
+          {
+            "interval": 333,
+            "rgb_mae": 0.4193117022514343,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9998504432904683,
+            "source_audio_rms": 0.0030102531891316175,
+            "quiet_window": false
+          },
+          {
+            "interval": 500,
+            "rgb_mae": 0.567139744758606,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9999259963111937,
+            "source_audio_rms": 0.06933537870645523,
+            "quiet_window": false
+          },
+          {
+            "interval": 749,
+            "rgb_mae": 0.48567816615104675,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9998692218785051,
+            "source_audio_rms": 0.004628043621778488,
+            "quiet_window": false
+          },
+          {
+            "interval": 998,
+            "rgb_mae": 0.5940353870391846,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9999753366390229,
+            "source_audio_rms": 0.08021043241024017,
+            "quiet_window": false
+          },
+          {
+            "interval": 999,
+            "rgb_mae": 0.5140805840492249,
+            "audio_lag_samples": null,
+            "audio_correlation": null,
+            "source_audio_rms": 8.657950820634142e-05,
+            "quiet_window": true
+          }
+        ],
+        "tail_correlation": null,
+        "tail_source_rms": 2.123368176398799e-06
+      },
+      {
+        "full_decode_passed": true,
+        "adopted_timeline_and_counts_unchanged": true,
+        "video_packets_identical_to_previous": true,
+        "audio_packets_identical_to_previous": true,
+        "real_course_checks": [
+          {
+            "interval": 0,
+            "rgb_mae": 0.05112811177968979,
+            "audio_lag_samples": null,
+            "audio_correlation": null,
+            "source_audio_rms": 1.0352598110330291e-05,
+            "quiet_window": true
+          },
+          {
+            "interval": 1,
+            "rgb_mae": 0.04063042625784874,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9991169796974606,
+            "source_audio_rms": 0.0024404837749898434,
+            "quiet_window": false
+          },
+          {
+            "interval": 99,
+            "rgb_mae": 0.6087604761123657,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9996729704010359,
+            "source_audio_rms": 0.01422752533107996,
+            "quiet_window": false
+          },
+          {
+            "interval": 333,
+            "rgb_mae": 0.4193117022514343,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9998504432904683,
+            "source_audio_rms": 0.0030102531891316175,
+            "quiet_window": false
+          },
+          {
+            "interval": 500,
+            "rgb_mae": 0.567139744758606,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9999259963111937,
+            "source_audio_rms": 0.06933537870645523,
+            "quiet_window": false
+          },
+          {
+            "interval": 749,
+            "rgb_mae": 0.48567816615104675,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9998692218785051,
+            "source_audio_rms": 0.004628043621778488,
+            "quiet_window": false
+          },
+          {
+            "interval": 998,
+            "rgb_mae": 0.5940353870391846,
+            "audio_lag_samples": 0,
+            "audio_correlation": 0.9999753366390229,
+            "source_audio_rms": 0.08021043241024017,
+            "quiet_window": false
+          },
+          {
+            "interval": 999,
+            "rgb_mae": 0.5140805840492249,
+            "audio_lag_samples": null,
+            "audio_correlation": null,
+            "source_audio_rms": 8.657950820634142e-05,
+            "quiet_window": true
+          }
+        ],
+        "tail_correlation": null,
+        "tail_source_rms": 2.123368176398799e-06
+      }
+    ]
+  },
+  "runs": [
+    {
+      "role": "previous_code_run_1",
+      "synthetic_intervals": true,
+      "source_duration_s": 1611.650181,
+      "gap_ms": 350.0,
+      "wall_elapsed_s": 64.68755790000068,
+      "renderer": "smartcut",
+      "smartcut_version": "1.7",
+      "pyav_version": "16.0.1",
+      "audio_mode": "continuous_aac",
+      "crossfade_ms_applied": 15.0,
+      "requested_interval_count": 1000,
+      "adopted_interval_count": 1000,
+      "adopted_duration_s": 1311.950281,
+      "index_elapsed_s": 0.724129999998695,
+      "index_backend": "c_startcode_scan",
+      "video_timestamp_math": "integer_exact",
+      "planned_recode_video_frames": 26217,
+      "source_video_frames": 32228,
+      "written_video_frames": 26234,
+      "requested_video_encoder": "auto",
+      "video_encoders_used": [
+        "h264_nvenc"
+      ],
+      "encoder_input_pixel_formats": [
+        "yuv420p"
+      ],
+      "gpu_accelerated": true,
+      "gpu_decode_accelerated": false,
+      "gpu_decoded_video_frames": 0,
+      "encoder_selection_reason": "NVENC 真实编码探测成功",
+      "encoder_probe_elapsed_s": 0.27084780000041064,
+      "requested_video_decoder": "auto",
+      "decoder_selection_reason": "auto 使用 CPU 解码，避免当前 NVDEC 下载到内存再上传 NVENC 的往返开销",
+      "decoder_probe_elapsed_s": 7.79999936639797e-06,
+      "audio_coder": "fast",
+      "requested_audio_encoder": "auto",
+      "audio_encoders_used": [
+        "aac_mf"
+      ],
+      "audio_encoder_selection_reasons": [
+        "MF 真实编码、解码、起始及尾部同步探测成功"
+      ],
+      "audio_encoder_probe_elapsed_s": 0.09177769999951124,
+      "audio_encoder_flush_padding_samples": [
+        2048
+      ],
+      "video_preset": "p4",
+      "video_decode_backend": "cpu",
+      "video_decode_encode_s": 60.23523489997751,
+      "audio_process_encode_s": 53.42301140003292,
+      "mux_packets_s": 0.6771419000688184,
+      "audio_wait_s": 0.0004933000000164611,
+      "video_decode_s": 12.652357199987819,
+      "video_encode_s": 39.50638789998993,
+      "video_encoder_initializations": 2,
+      "export_pipeline": "process_audio_video",
+      "requested_audio_pipeline": "auto",
+      "pipeline_elapsed_s": 61.817797900001096,
+      "audio_stage_detail_s": {
+        "audio_decode_resample_s": 15.508953699965787,
+        "audio_pcm_edit_s": 0.7373214999188349,
+        "audio_frame_build_s": 2.266234599896052,
+        "audio_encode_s": 33.47578490009437
+      },
+      "audio_samples_written": [
+        57857007
+      ],
+      "audio_padded_samples": [
+        0
+      ],
+      "render_elapsed_s": 63.97044879999885,
+      "audio_process_mux_s": 0.7534893001848104,
+      "audio_worker_elapsed_s": 54.42560880000019,
+      "final_stream_copy_mux_s": 1.1461733000014647,
+      "actual_duration_s": 1311.950272,
+      "export_elapsed_s": 64.54199440000048
+    },
+    {
+      "role": "decode_prefetch_experiment_not_retained",
+      "synthetic_intervals": true,
+      "source_duration_s": 1611.650181,
+      "gap_ms": 350.0,
+      "wall_elapsed_s": 39.34796129999995,
+      "renderer": "smartcut",
+      "smartcut_version": "1.7",
+      "pyav_version": "16.0.1",
+      "audio_mode": "continuous_aac",
+      "crossfade_ms_applied": 15.0,
+      "requested_interval_count": 1000,
+      "adopted_interval_count": 1000,
+      "adopted_duration_s": 1311.950281,
+      "index_elapsed_s": 0.7764522000015859,
+      "index_backend": "c_startcode_scan",
+      "video_timestamp_math": "integer_exact",
+      "planned_recode_video_frames": 26217,
+      "source_video_frames": 32228,
+      "written_video_frames": 26234,
+      "requested_video_encoder": "auto",
+      "video_encoders_used": [
+        "h264_nvenc"
+      ],
+      "encoder_input_pixel_formats": [
+        "yuv420p"
+      ],
+      "gpu_accelerated": true,
+      "gpu_decode_accelerated": false,
+      "gpu_decoded_video_frames": 0,
+      "encoder_selection_reason": "NVENC 真实编码探测成功",
+      "encoder_probe_elapsed_s": 0.44181960000059917,
+      "requested_video_decoder": "auto",
+      "decoder_selection_reason": "auto 使用 CPU 解码，避免当前 NVDEC 下载到内存再上传 NVENC 的往返开销",
+      "decoder_probe_elapsed_s": 1.0600000678095967e-05,
+      "audio_coder": "fast",
+      "requested_audio_encoder": "auto",
+      "audio_encoders_used": [
+        "aac_mf"
+      ],
+      "audio_encoder_selection_reasons": [
+        "MF 真实编码、解码、起始及尾部同步探测成功"
+      ],
+      "audio_encoder_probe_elapsed_s": 0.09083190000092145,
+      "audio_encoder_flush_padding_samples": [
+        2048
+      ],
+      "video_preset": "p4",
+      "video_decode_backend": "cpu",
+      "video_decode_encode_s": 34.91579809997711,
+      "audio_process_encode_s": 30.80158589986422,
+      "mux_packets_s": 0.3677939000954211,
+      "audio_wait_s": 0.0006807999998272862,
+      "video_decode_s": 12.277753899888921,
+      "video_encode_s": 22.9325208999835,
+      "video_encoder_initializations": 2,
+      "requested_video_pipeline": "auto",
+      "video_decode_prefetch": true,
+      "video_decode_prefetch_max_frames": 8,
+      "nvenc_surfaces": 32,
+      "export_pipeline": "process_audio_video",
+      "requested_audio_pipeline": "auto",
+      "pipeline_elapsed_s": 36.06881849999991,
+      "audio_stage_detail_s": {
+        "audio_decode_resample_s": 8.47323969991703,
+        "audio_pcm_edit_s": 0.43921430010232143,
+        "audio_frame_build_s": 1.1856648000175483,
+        "audio_encode_s": 19.939347299896326
+      },
+      "audio_samples_written": [
+        57857007
+      ],
+      "audio_padded_samples": [
+        0
+      ],
+      "render_elapsed_s": 38.55868600000031,
+      "audio_process_mux_s": 0.42262420010592905,
+      "audio_worker_elapsed_s": 31.424440299999333,
+      "final_stream_copy_mux_s": 1.2592786000004708,
+      "actual_duration_s": 1311.950272,
+      "export_elapsed_s": 39.200208199999906
+    },
+    {
+      "role": "final_equivalent_run_1",
+      "synthetic_intervals": true,
+      "source_duration_s": 1611.650181,
+      "gap_ms": 350.0,
+      "wall_elapsed_s": 39.03731730000072,
+      "renderer": "smartcut",
+      "smartcut_version": "1.7",
+      "pyav_version": "16.0.1",
+      "audio_mode": "continuous_aac",
+      "crossfade_ms_applied": 15.0,
+      "requested_interval_count": 1000,
+      "adopted_interval_count": 1000,
+      "adopted_duration_s": 1311.950281,
+      "index_elapsed_s": 0.7975645000005898,
+      "index_backend": "c_startcode_scan",
+      "video_timestamp_math": "integer_exact",
+      "planned_recode_video_frames": 26217,
+      "source_video_frames": 32228,
+      "written_video_frames": 26234,
+      "requested_video_encoder": "auto",
+      "video_encoders_used": [
+        "h264_nvenc"
+      ],
+      "encoder_input_pixel_formats": [
+        "yuv420p"
+      ],
+      "gpu_accelerated": true,
+      "gpu_decode_accelerated": false,
+      "gpu_decoded_video_frames": 0,
+      "encoder_selection_reason": "NVENC 真实编码探测成功",
+      "encoder_probe_elapsed_s": 0.44558169999982056,
+      "requested_video_decoder": "auto",
+      "decoder_selection_reason": "auto 使用 CPU 解码，避免当前 NVDEC 下载到内存再上传 NVENC 的往返开销",
+      "decoder_probe_elapsed_s": 1.2099999366910197e-05,
+      "audio_coder": "fast",
+      "requested_audio_encoder": "auto",
+      "audio_encoders_used": [
+        "aac_mf"
+      ],
+      "audio_encoder_selection_reasons": [
+        "MF 真实编码、解码、起始及尾部同步探测成功"
+      ],
+      "audio_encoder_probe_elapsed_s": 0.07959619999928691,
+      "audio_encoder_flush_padding_samples": [
+        2048
+      ],
+      "video_preset": "p4",
+      "video_decode_backend": "cpu",
+      "video_decode_encode_s": 34.45189929997832,
+      "audio_process_encode_s": 28.988749599917355,
+      "mux_packets_s": 0.38658300019960734,
+      "audio_wait_s": 0.0004184000008535804,
+      "video_decode_s": 8.439022500078863,
+      "video_encode_s": 20.927391900240764,
+      "video_encoder_initializations": 2,
+      "requested_video_pipeline": "serial",
+      "video_decode_prefetch": false,
+      "video_decode_prefetch_max_frames": 0,
+      "nvenc_surfaces": 32,
+      "export_pipeline": "process_audio_video",
+      "requested_audio_pipeline": "auto",
+      "pipeline_elapsed_s": 35.625121499999295,
+      "audio_stage_detail_s": {
+        "audio_decode_resample_s": 7.8345167999559635,
+        "audio_pcm_edit_s": 0.41825220003192953,
+        "audio_frame_build_s": 1.0859560999488167,
+        "audio_encode_s": 18.943417599923123
+      },
+      "audio_samples_written": [
+        57857007
+      ],
+      "audio_padded_samples": [
+        0
+      ],
+      "render_elapsed_s": 38.091559399999824,
+      "audio_process_mux_s": 0.398458299894628,
+      "audio_worker_elapsed_s": 29.585975100000724,
+      "final_stream_copy_mux_s": 1.209208199999921,
+      "actual_duration_s": 1311.950272,
+      "export_elapsed_s": 38.724323399999776
+    },
+    {
+      "role": "previous_code_run_2",
+      "synthetic_intervals": true,
+      "source_duration_s": 1611.650181,
+      "gap_ms": 350.0,
+      "wall_elapsed_s": 47.29129190000094,
+      "renderer": "smartcut",
+      "smartcut_version": "1.7",
+      "pyav_version": "16.0.1",
+      "audio_mode": "continuous_aac",
+      "crossfade_ms_applied": 15.0,
+      "requested_interval_count": 1000,
+      "adopted_interval_count": 1000,
+      "adopted_duration_s": 1311.950281,
+      "index_elapsed_s": 0.7281031999991683,
+      "index_backend": "c_startcode_scan",
+      "video_timestamp_math": "integer_exact",
+      "planned_recode_video_frames": 26217,
+      "source_video_frames": 32228,
+      "written_video_frames": 26234,
+      "requested_video_encoder": "auto",
+      "video_encoders_used": [
+        "h264_nvenc"
+      ],
+      "encoder_input_pixel_formats": [
+        "yuv420p"
+      ],
+      "gpu_accelerated": true,
+      "gpu_decode_accelerated": false,
+      "gpu_decoded_video_frames": 0,
+      "encoder_selection_reason": "NVENC 真实编码探测成功",
+      "encoder_probe_elapsed_s": 0.3881044000008842,
+      "requested_video_decoder": "auto",
+      "decoder_selection_reason": "auto 使用 CPU 解码，避免当前 NVDEC 下载到内存再上传 NVENC 的往返开销",
+      "decoder_probe_elapsed_s": 1.680000059423037e-05,
+      "audio_coder": "fast",
+      "requested_audio_encoder": "auto",
+      "audio_encoders_used": [
+        "aac_mf"
+      ],
+      "audio_encoder_selection_reasons": [
+        "MF 真实编码、解码、起始及尾部同步探测成功"
+      ],
+      "audio_encoder_probe_elapsed_s": 0.11056529999950726,
+      "audio_encoder_flush_padding_samples": [
+        2048
+      ],
+      "video_preset": "p4",
+      "video_decode_backend": "cpu",
+      "video_decode_encode_s": 42.51115509998999,
+      "audio_process_encode_s": 29.937870000185285,
+      "mux_packets_s": 0.4146805999480421,
+      "audio_wait_s": 0.0007263000006787479,
+      "video_decode_s": 8.8875132998146,
+      "video_encode_s": 28.105141499978345,
+      "video_encoder_initializations": 2,
+      "export_pipeline": "process_audio_video",
+      "requested_audio_pipeline": "auto",
+      "pipeline_elapsed_s": 43.74897080000119,
+      "audio_stage_detail_s": {
+        "audio_decode_resample_s": 8.21358589999727,
+        "audio_pcm_edit_s": 0.4280932000147004,
+        "audio_frame_build_s": 1.123896100129059,
+        "audio_encode_s": 19.41967590025888
+      },
+      "audio_samples_written": [
+        57857007
+      ],
+      "audio_padded_samples": [
+        0
+      ],
+      "render_elapsed_s": 46.363729099999546,
+      "audio_process_mux_s": 0.4123120999593084,
+      "audio_worker_elapsed_s": 30.595901000000595,
+      "final_stream_copy_mux_s": 1.4830535000000964,
+      "actual_duration_s": 1311.950272,
+      "export_elapsed_s": 46.984420700000555
+    },
+    {
+      "role": "final_code_run_2",
+      "synthetic_intervals": true,
+      "source_duration_s": 1611.650181,
+      "gap_ms": 350.0,
+      "wall_elapsed_s": 39.63338769999973,
+      "renderer": "smartcut",
+      "smartcut_version": "1.7",
+      "pyav_version": "16.0.1",
+      "audio_mode": "continuous_aac",
+      "crossfade_ms_applied": 15.0,
+      "requested_interval_count": 1000,
+      "adopted_interval_count": 1000,
+      "adopted_duration_s": 1311.950281,
+      "index_elapsed_s": 0.8279665000009118,
+      "index_backend": "c_startcode_scan",
+      "video_timestamp_math": "integer_exact",
+      "planned_recode_video_frames": 26217,
+      "source_video_frames": 32228,
+      "written_video_frames": 26234,
+      "requested_video_encoder": "auto",
+      "video_encoders_used": [
+        "h264_nvenc"
+      ],
+      "encoder_input_pixel_formats": [
+        "yuv420p"
+      ],
+      "gpu_accelerated": true,
+      "gpu_decode_accelerated": false,
+      "gpu_decoded_video_frames": 0,
+      "encoder_selection_reason": "NVENC 真实编码探测成功",
+      "encoder_probe_elapsed_s": 0.47233369999958086,
+      "requested_video_decoder": "auto",
+      "decoder_selection_reason": "auto 使用 CPU 解码，避免当前 NVDEC 下载到内存再上传 NVENC 的往返开销",
+      "decoder_probe_elapsed_s": 1.2099999366910197e-05,
+      "audio_coder": "fast",
+      "requested_audio_encoder": "auto",
+      "audio_encoders_used": [
+        "aac_mf"
+      ],
+      "audio_encoder_selection_reasons": [
+        "MF 真实编码、解码、起始及尾部同步探测成功"
+      ],
+      "audio_encoder_probe_elapsed_s": 0.1145611000010831,
+      "audio_encoder_flush_padding_samples": [
+        2048
+      ],
+      "video_preset": "p4",
+      "video_decode_backend": "cpu",
+      "video_decode_encode_s": 34.64448359999005,
+      "audio_process_encode_s": 30.136020300011296,
+      "mux_packets_s": 0.39032809999844176,
+      "audio_wait_s": 0.0004270999997970648,
+      "video_decode_s": 8.538866700162544,
+      "video_encode_s": 20.9637240998818,
+      "video_encoder_initializations": 2,
+      "nvenc_surfaces": 32,
+      "export_pipeline": "process_audio_video",
+      "requested_audio_pipeline": "auto",
+      "pipeline_elapsed_s": 35.83848869999929,
+      "audio_stage_detail_s": {
+        "audio_decode_resample_s": 8.222991800008458,
+        "audio_pcm_edit_s": 0.42125330009548634,
+        "audio_frame_build_s": 1.1706552999967244,
+        "audio_encode_s": 19.580329600077675
+      },
+      "audio_samples_written": [
+        57857007
+      ],
+      "audio_padded_samples": [
+        0
+      ],
+      "render_elapsed_s": 38.79409400000077,
+      "audio_process_mux_s": 0.40146279990585754,
+      "audio_worker_elapsed_s": 30.77691919999961,
+      "final_stream_copy_mux_s": 1.6415629999992234,
+      "actual_duration_s": 1311.950272,
+      "export_elapsed_s": 39.37633899999855
+    }
+  ]
+}

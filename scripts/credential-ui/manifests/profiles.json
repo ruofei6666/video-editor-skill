@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "profiles": {
+    "volcengine": [
+      { "manifest": "volcengine.json", "env": "VOLCENGINE_ASR_API_KEY" }
+    ],
+    "default": [
+      {
+        "manifest": "default.json",
+        "env": "DASHSCOPE_API_KEY"
+      }
+    ]
+  }
+}

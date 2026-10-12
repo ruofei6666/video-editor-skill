@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "id": "video-editor-volcengine",
+  "label": "火山豆包语音 API Key",
+  "credential": "video-editor/volcengine/default",
+  "ui": { "title": "配置火山语音", "placeholder": "填写语音控制台 API Key" }
+}
